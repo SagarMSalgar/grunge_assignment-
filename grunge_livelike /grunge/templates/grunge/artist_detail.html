@@ -1,0 +1,76 @@
+{% extends "grunge/base.html" %}
+
+{% block title %}{{ artist.name }} — Grunge{% endblock %}
+{% block nav_artists %}active{% endblock %}
+
+{% block content %}
+
+<div class="breadcrumb">
+  <a href="{% url 'artist-list' %}">Artists</a>
+  <span class="breadcrumb-sep">/</span>
+  <span style="color:var(--text);">{{ artist.name }}</span>
+</div>
+
+{# ── Artist hero ────────────────────────────────────────────────────────── #}
+<div style="display:flex;gap:2rem;align-items:flex-end;margin-bottom:3rem;flex-wrap:wrap;">
+  <div style="
+    width:180px;height:180px;flex-shrink:0;border-radius:50%;
+    background:linear-gradient(145deg,
+      hsl({{ artist.name|length }}0,28%,30%),
+      hsl({{ artist.name|length }}5,16%,12%));
+    display:flex;align-items:center;justify-content:center;
+    font-size:4rem;box-shadow:0 16px 48px rgba(0,0,0,.6);">
+    &#127928;
+  </div>
+  <div style="flex:1;min-width:0;">
+    <p style="font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 .3rem;">Artist</p>
+    <h1 style="font-size:2.6rem;font-weight:900;letter-spacing:-1px;line-height:1.05;margin:0 0 .6rem;word-break:break-word;">
+      {{ artist.name }}
+    </h1>
+    {% with total_albums=artist.albums.all|length %}
+    <p style="color:var(--muted);font-size:.875rem;margin:0;">
+      {{ total_albums }} album{{ total_albums|pluralize }}
+    </p>
+    {% endwith %}
+  </div>
+</div>
+
+{# ── Discography ────────────────────────────────────────────────────────── #}
+<div style="margin-bottom:.75rem;display:flex;justify-content:space-between;align-items:center;">
+  <h2 style="font-size:1.1rem;font-weight:700;margin:0;">Discography</h2>
+</div>
+
+{% if artist.albums.all %}
+  <div style="display:flex;flex-direction:column;gap:.5rem;">
+    {% for album in artist.albums.all %}
+      <a href="{% url 'album-detail' album.uuid %}"
+         style="display:flex;align-items:center;gap:1.25rem;padding:.75rem 1rem;
+                background:var(--surface);border-radius:8px;
+                border:1px solid var(--border);transition:background .15s,border-color .15s;"
+         onmouseover="this.style.background='var(--surface2)';this.style.borderColor='#3a3a3a'"
+         onmouseout="this.style.background='var(--surface)';this.style.borderColor='var(--border)'">
+        {# Album art swatch #}
+        <div style="width:52px;height:52px;flex-shrink:0;border-radius:6px;
+                    background:linear-gradient(135deg,
+                      hsl({{ album.year }}0,22%,26%),
+                      hsl({{ album.name|length }}5,14%,11%));
+                    display:flex;align-items:center;justify-content:center;font-size:1.4rem;">
+          &#127925;
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ album.name }}</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:.15rem;">{{ album.year }}</div>
+        </div>
+        <div class="badge-app">{{ album.track_count }} track{{ album.track_count|pluralize }}</div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state" style="padding:3rem 0;">
+    <div class="empty-icon">&#127925;</div>
+    <p class="empty-title">No albums yet</p>
+  </div>
+{% endif %}
+
+{% endblock %}

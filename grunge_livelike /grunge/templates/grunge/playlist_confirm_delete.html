@@ -1,0 +1,45 @@
+{% extends "grunge/base.html" %}
+
+{% block title %}Delete {{ object.name }} — Grunge{% endblock %}
+{% block nav_playlists %}active{% endblock %}
+
+{% block content %}
+
+<div class="breadcrumb">
+  <a href="{% url 'playlist-list' %}">Playlists</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{{ object.get_absolute_url }}">{{ object.name }}</a>
+  <span class="breadcrumb-sep">/</span>
+  <span style="color:var(--text);">Delete</span>
+</div>
+
+<div style="max-width:420px;">
+  <div style="background:var(--surface);border:1px solid rgba(224,82,82,.2);border-radius:var(--radius);padding:2rem;">
+    <h1 style="font-size:1.1rem;font-weight:700;color:var(--danger);margin:0 0 1rem;">
+      Delete playlist?
+    </h1>
+    <p style="margin:0 0 .5rem;font-size:.925rem;">
+      <strong>{{ object.name }}</strong> will be permanently removed.
+    </p>
+    {% with count=object.playlist_tracks.count %}
+      <p style="color:var(--muted);font-size:.825rem;margin:0 0 1.75rem;">
+        {% if count %}
+          {{ count }} track{{ count|pluralize }} will be removed from this playlist.
+          The tracks themselves remain in the catalogue.
+        {% else %}
+          This playlist is empty.
+        {% endif %}
+      </p>
+    {% endwith %}
+    <form method="post" style="display:flex;gap:.6rem;">
+      {% csrf_token %}
+      <button type="submit" class="btn-danger-app"
+              style="border:1px solid var(--danger);font-weight:600;">
+        Delete
+      </button>
+      <a href="{{ object.get_absolute_url }}" class="btn-secondary-app">Cancel</a>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

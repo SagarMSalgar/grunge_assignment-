@@ -1,0 +1,111 @@
+{% extends "grunge/base.html" %}
+
+{% block title %}Playlists — Grunge{% endblock %}
+{% block nav_playlists %}active{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;gap:1rem;flex-wrap:wrap;">
+  <div>
+    <h1 class="page-title">Playlists</h1>
+    <p class="page-subtitle">
+      {% if search_name %}
+        Results for &ldquo;{{ search_name }}&rdquo;
+      {% else %}
+        {{ paginator.count }} playlist{{ paginator.count|pluralize }}
+      {% endif %}
+    </p>
+  </div>
+  <a href="{% url 'playlist-create' %}" class="btn-primary-app">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    New Playlist
+  </a>
+</div>
+
+<div style="margin-bottom:2rem;">
+  <form method="get" style="display:flex;gap:.5rem;max-width:400px;">
+    <div class="search-wrap" style="flex:1;">
+      <span class="search-icon">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+      <input type="search" name="name" value="{{ search_name }}" placeholder="Search playlists…" autocomplete="off">
+    </div>
+    {% if search_name %}
+      <a href="{% url 'playlist-list' %}" class="btn-secondary-app">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+{% if playlists %}
+  <div class="playlist-grid">
+    {% for playlist in playlists %}
+      <div class="playlist-card">
+
+        {# Art block — colour derived from name length for visual variety #}
+        <a href="{{ playlist.get_absolute_url }}" style="display:block;text-decoration:none;">
+          <div class="playlist-card-art"
+               style="background:linear-gradient(145deg,
+                 hsl({{ playlist.name|length }}0, 30%, 22%),
+                 hsl({{ playlist.name|length }}5, 18%, 12%));">
+            <span style="opacity:.5;">&#9835;</span>
+            <div class="play-btn">&#9654;</div>
+          </div>
+        </a>
+
+        {# Hover action buttons (edit / delete) #}
+        <div class="playlist-card-actions">
+          <a href="{% url 'playlist-update' playlist.uuid %}"
+             class="card-action-btn" title="Edit">&#9998;</a>
+          <a href="{% url 'playlist-delete' playlist.uuid %}"
+             class="card-action-btn danger" title="Delete">&times;</a>
+        </div>
+
+        <div class="playlist-card-body">
+          <div class="playlist-card-name">
+            <a href="{{ playlist.get_absolute_url }}"
+               style="text-decoration:none;color:inherit;">
+              {{ playlist.name }}
+            </a>
+          </div>
+          <div class="playlist-card-meta">
+            {{ playlist.track_count }} track{{ playlist.track_count|pluralize }}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if is_paginated %}
+    <div style="display:flex;justify-content:center;gap:.5rem;margin-top:2.5rem;">
+      {% if page_obj.has_previous %}
+        <a href="?{% if search_name %}name={{ search_name }}&{% endif %}page={{ page_obj.previous_page_number }}"
+           class="btn-secondary-app">&laquo; Prev</a>
+      {% endif %}
+      <span class="btn-secondary-app" style="cursor:default;pointer-events:none;color:var(--muted);">
+        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+      </span>
+      {% if page_obj.has_next %}
+        <a href="?{% if search_name %}name={{ search_name }}&{% endif %}page={{ page_obj.next_page_number }}"
+           class="btn-secondary-app">Next &raquo;</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">&#9835;</div>
+    {% if search_name %}
+      <p class="empty-title">No results for &ldquo;{{ search_name }}&rdquo;</p>
+      <p class="empty-body">Try a different search term.</p>
+      <a href="{% url 'playlist-list' %}" class="btn-secondary-app">Clear search</a>
+    {% else %}
+      <p class="empty-title">No playlists yet</p>
+      <p class="empty-body">Create your first collection from the grunge catalogue.</p>
+      <a href="{% url 'playlist-create' %}" class="btn-primary-app">Create a playlist</a>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% endblock %}

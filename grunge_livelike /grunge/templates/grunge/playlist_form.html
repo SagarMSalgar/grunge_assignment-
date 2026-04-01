@@ -1,0 +1,710 @@
+{% extends "grunge/base.html" %}
+
+{% block title %}{{ action }} Playlist — Grunge{% endblock %}
+{% block nav_playlists %}active{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Custom combobox ──────────────────────────────────────────── */
+  .combobox { position: relative; }
+
+  .combobox-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: .5rem 2.2rem .5rem .85rem;
+    font-size: .875rem;
+    line-height: 1.4;
+    outline: none;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+  }
+  .combobox-input:focus,
+  .combobox-input.open {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245,166,35,.12);
+    border-radius: 6px 6px 0 0;
+  }
+  .combobox-input.error { border-color: var(--danger); }
+  .combobox-arrow {
+    position: absolute;
+    right: .65rem; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+    transition: transform .15s;
+  }
+  .combobox-input.open ~ .combobox-arrow { transform: translateY(-50%) rotate(180deg); }
+
+  /* ── Dropdown shell ───────────────────────────────────────────── */
+  .combobox-dropdown {
+    position: absolute;
+    left: 0; right: 0; top: 100%;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.55);
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    min-width: 260px;
+  }
+  .combobox-dropdown.open { display: flex; }
+
+  /* ── Fixed search header inside dropdown ─────────────────────── */
+  .combobox-search-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+  }
+  .combobox-search-header svg { flex-shrink: 0; color: var(--muted); }
+  .combobox-search {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: .875rem;
+    outline: none;
+    padding: 0;
+    min-width: 0;
+  }
+  .combobox-search::placeholder { color: var(--muted); }
+
+  /* ── Scrollable options area ──────────────────────────────────── */
+  .combobox-options {
+    overflow-y: auto;
+    max-height: 300px;
+  }
+  .combobox-group-label {
+    padding: .5rem .85rem .25rem;
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--muted);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    border-bottom: 1px solid rgba(46,46,46,.5);
+  }
+  .combobox-option {
+    padding: .5rem .85rem .5rem 1.35rem;
+    font-size: .85rem;
+    color: var(--text);
+    cursor: pointer;
+    transition: background .08s;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .combobox-option:hover { background: var(--surface2); color: var(--accent); }
+  .combobox-option.focused { background: var(--surface2); color: var(--accent); }
+  .combobox-option[data-value=""] { color: var(--muted); padding-left: .85rem; font-style: italic; }
+  .combobox-empty {
+    padding: 1.25rem .85rem;
+    font-size: .82rem;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+
+<div class="breadcrumb">
+  <a href="{% url 'playlist-list' %}">Playlists</a>
+  {% if playlist %}
+    <span class="breadcrumb-sep">/</span>
+    <a href="{{ playlist.get_absolute_url }}">{{ playlist.name }}</a>
+  {% endif %}
+  <span class="breadcrumb-sep">/</span>
+  <span style="color:var(--text);">{{ action }}</span>
+</div>
+
+<div style="max-width:660px;">
+  <h1 class="page-title" style="margin-bottom:2rem;">{{ action }} Playlist</h1>
+
+  {% if request.GET.playlist_debug == "1" %}
+  <p style="font-size:.8rem;color:var(--muted);margin:-1rem 0 1.25rem;padding:.5rem .65rem;background:var(--surface2);border-radius:6px;border:1px solid var(--border);">
+    Debug mode: open the browser console (F12) for <code style="color:var(--accent);">[grunge playlist]</code> logs.
+    With <code>DEBUG=True</code>, failed saves also log <code>playlist_tracks-*</code> POST data on the server.
+  </p>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ formset.management_form }}
+
+    {# ── Validation errors ──────────────────────────── #}
+    {% if form.errors or formset.non_form_errors %}
+      <div style="background:rgba(224,82,82,.07);border:1px solid rgba(224,82,82,.3);
+                  border-radius:8px;padding:.75rem 1rem;margin-bottom:1.5rem;
+                  color:var(--danger);font-size:.85rem;">
+        <strong>Please fix the errors below:</strong>
+        {% if form.non_field_errors %}<div>{{ form.non_field_errors.0 }}</div>{% endif %}
+        {% for error in formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    {% for tf in formset %}
+      {# Hide row errors when "Remove" is checked — track is intentionally ignored. #}
+      {% if tf.errors and not tf.DELETE.value %}
+        <div style="background:rgba(224,82,82,.07);border:1px solid rgba(224,82,82,.3);
+                    border-radius:8px;padding:.65rem 1rem;margin-bottom:.75rem;
+                    color:var(--danger);font-size:.82rem;">
+          Track row {{ forloop.counter }}:
+          {% for field, errs in tf.errors.items %}{{ errs.0 }} {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    {# ── Name ───────────────────────────────────────── #}
+    <div style="margin-bottom:2rem;">
+      <div class="section-label">Playlist name</div>
+      <input
+        type="text"
+        name="{{ form.name.html_name }}"
+        id="{{ form.name.id_for_label }}"
+        value="{{ form.name.value|default:'' }}"
+        class="{% if form.name.errors %}error{% endif %}"
+        style="font-size:1.1rem;font-weight:600;padding:.65rem .85rem;"
+        placeholder="e.g. Sunday Morning Grunge"
+        autocomplete="off"
+        autofocus
+      >
+      {% if form.name.errors %}
+        <div class="field-error">{{ form.name.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    {# ── Tracks ─────────────────────────────────────── #}
+    <div style="margin-bottom:2rem;">
+      <div class="section-label" style="display:flex;justify-content:space-between;">
+        <span>Tracks</span>
+        <span id="track-count-lbl" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);"></span>
+      </div>
+
+      <div class="formset-card">
+        <div class="formset-header">
+          <span>&#8597; Drag to reorder</span>
+        </div>
+
+        <div id="formset-body">
+          {% for tf in formset %}
+            <div class="formset-row" draggable="true">
+              <span class="drag-handle">&#8942;&#8942;</span>
+
+              <div style="flex:1;min-width:0;">
+                {# id, playlist, track (HiddenInput), … — single source of truth for POST #}
+                {% for h in tf.hidden_fields %}{{ h }}{% endfor %}
+
+                {# Visible combobox UI (mirrors into hidden track above) #}
+                <div class="combobox" data-for="{{ tf.track.id_for_label }}">
+                  <div class="combobox-input {% if tf.track.errors %}error{% endif %}"
+                       tabindex="0" role="combobox"
+                       aria-expanded="false" aria-haspopup="listbox">
+                    {% if tf.track.value %}
+                      {# Show current selection label — guard against the placeholder tuple #}
+                      {% for group_name, group_opts in tf.track.field.choices %}
+                        {% if group_name %}
+                          {% for opt_val, opt_label in group_opts %}
+                            {% if tf.track.value|stringformat:"s" == opt_val|stringformat:"s" %}
+                              {{ group_name }} — {{ opt_label }}
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                      {% endfor %}
+                    {% else %}
+                      <span style="color:var(--muted);font-style:italic;">— Select a track —</span>
+                    {% endif %}
+                  </div>
+                  <span class="combobox-arrow">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </span>
+                  <div class="combobox-dropdown" role="listbox">
+                    <div class="combobox-search-header">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                      <input class="combobox-search" type="text"
+                             placeholder="Search artist or track…"
+                             autocomplete="off" spellcheck="false">
+                    </div>
+                    <div class="combobox-options">
+                      <div class="combobox-option" data-value="">— Select a track —</div>
+                      {% for group_name, group_opts in tf.track.field.choices %}
+                        {% if group_name %}
+                          <div class="combobox-group-label">{{ group_name }}</div>
+                          {% for opt_val, opt_label in group_opts %}
+                            <div class="combobox-option"
+                                 data-value="{{ opt_val }}"
+                                 data-label="{{ group_name }} — {{ opt_label }}"
+                                 data-search="{{ group_name|lower }} {{ opt_label|lower }}">
+                              {{ opt_label }}
+                            </div>
+                          {% endfor %}
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+
+                {% if tf.track.errors and not tf.DELETE.value %}
+                  <div class="field-error">{{ tf.track.errors.0 }}</div>
+                {% endif %}
+              </div>
+
+              <div style="flex-shrink:0;">
+                {% if tf.instance.pk %}
+                  <label style="display:flex;align-items:center;gap:.3rem;font-size:.75rem;color:var(--muted);cursor:pointer;white-space:nowrap;">
+                    {{ tf.DELETE }}
+                    <span>Remove</span>
+                  </label>
+                {% else %}
+                  <button type="button" class="remove-row"
+                          style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:.1rem .4rem;"
+                          title="Remove">&times;</button>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="formset-footer">
+          <button type="button" id="add-track"
+                  style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:0;display:flex;align-items:center;gap:.3rem;"
+                  onmouseover="this.style.color='var(--text)'"
+                  onmouseout="this.style.color='var(--muted)'">
+            <span style="font-size:1rem;">+</span> Add track
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.75rem;padding-top:1rem;border-top:1px solid var(--border);">
+      <button type="submit" id="save-btn" class="btn-primary-app">
+        <span id="save-label">Save Playlist</span>
+        <span id="save-spinner" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.5" stroke-linecap="round" style="animation:spin .7s linear infinite;">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+          Saving…
+        </span>
+      </button>
+      {% if playlist %}
+        <a href="{{ playlist.get_absolute_url }}" class="btn-secondary-app">Cancel</a>
+      {% else %}
+        <a href="{% url 'playlist-list' %}" class="btn-secondary-app">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+{# ── Empty form template ───────────────────────────────────────────── #}
+<div id="empty-form-tmpl" style="display:none;">
+  <div class="formset-row" draggable="true">
+    <span class="drag-handle">&#8942;&#8942;</span>
+    <div style="flex:1;min-width:0;">
+      {% for h in formset.empty_form.hidden_fields %}{{ h }}{% endfor %}
+      <div class="combobox" data-for="{{ formset.empty_form.track.id_for_label }}">
+        <div class="combobox-input" tabindex="0" role="combobox">
+          <span style="color:#555;">— Select a track —</span>
+        </div>
+        <span class="combobox-arrow">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+        <div class="combobox-dropdown" role="listbox">
+          <div class="combobox-search-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="combobox-search" type="text"
+                   placeholder="Search artist or track…"
+                   autocomplete="off" spellcheck="false">
+          </div>
+          <div class="combobox-options">
+            <div class="combobox-option" data-value="">— Select a track —</div>
+            {% for group_name, group_opts in formset.empty_form.track.field.choices %}
+              {% if group_name %}
+                <div class="combobox-group-label">{{ group_name }}</div>
+                {% for opt_val, opt_label in group_opts %}
+                  <div class="combobox-option"
+                       data-value="{{ opt_val }}"
+                       data-label="{{ group_name }} — {{ opt_label }}"
+                       data-search="{{ group_name|lower }} {{ opt_label|lower }}">
+                    {{ opt_label }}
+                  </div>
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="flex-shrink:0;">
+      <button type="button" class="remove-row"
+              style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:.1rem .4rem;">&times;</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+<script>
+(function () {
+  "use strict";
+
+  var body       = document.getElementById("formset-body");
+  var totalForms = document.getElementById("id_playlist_tracks-TOTAL_FORMS");
+  var emptyTmpl  = document.getElementById("empty-form-tmpl");
+  var countLbl   = document.getElementById("track-count-lbl");
+
+  // Debug: add ?playlist_debug=1 to the page URL, or:
+  //   localStorage.setItem("GRUNGE_PLAYLIST_DEBUG", "1"); location.reload();
+  var playlistDebugOn =
+    (typeof location !== "undefined" && /(?:^|[?&])playlist_debug=1(?:&|$)/.test(location.search)) ||
+    (typeof localStorage !== "undefined" && localStorage.getItem("GRUNGE_PLAYLIST_DEBUG") === "1");
+
+  function plog() {
+    if (!playlistDebugOn) return;
+    var a = ["[grunge playlist]"];
+    for (var i = 0; i < arguments.length; i++) a.push(arguments[i]);
+    console.log.apply(console, a);
+  }
+
+  function normDisplayText(s) {
+    if (!s || typeof s !== "string") return "";
+    try {
+      s = s.normalize("NFC");
+    } catch (e) { /* ignore */ }
+    return s.trim().replace(/\s+/g, " ");
+  }
+
+  function rowSnapshot(row, domIndex) {
+    var hid = row.querySelector('input[type="hidden"][name$="-track"]');
+    var idInp = row.querySelector('input[type="hidden"][name$="-id"]');
+    var plInp = row.querySelector('input[type="hidden"][name$="-playlist"]');
+    var trig = row.querySelector(".combobox-input");
+    var del = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    return {
+      domIndex: domIndex,
+      display: normDisplayText(trig ? trig.textContent : ""),
+      track: hid ? { name: hid.name, value: hid.value } : null,
+      id: idInp ? { name: idInp.name, value: idInp.value } : null,
+      playlist: plInp ? { name: plInp.name, value: plInp.value } : null,
+      deleteChecked: del ? del.checked : null
+    };
+  }
+
+  function logFormsetState(phase) {
+    if (!playlistDebugOn) return;
+    var rows = Array.from(body.querySelectorAll(".formset-row"));
+    var mg = ["TOTAL_FORMS", "INITIAL_FORMS", "MIN_NUM_FORMS", "MAX_NUM_FORMS"].map(function (k) {
+      var el = document.querySelector('input[name="playlist_tracks-' + k + '"]');
+      return k + "=" + (el ? el.value : "?");
+    });
+    plog(phase, mg.join(" "), "rowCount=" + rows.length);
+    rows.forEach(function (row, i) {
+      plog(phase, " snapshot[" + i + "]", rowSnapshot(row, i));
+    });
+  }
+
+  function logPlaylistPostFields(phase) {
+    if (!playlistDebugOn) return;
+    var fd = new FormData(document.querySelector("form"));
+    var pairs = [];
+    fd.forEach(function (v, k) {
+      if (k.indexOf("playlist_tracks") === 0) pairs.push(k + "=" + v);
+    });
+    pairs.sort();
+    plog(phase, "FormData playlist_tracks (" + pairs.length + " keys):", pairs);
+  }
+
+  function refreshCount() {
+    var n = body.querySelectorAll(".formset-row").length;
+    countLbl.textContent = n + " track" + (n !== 1 ? "s" : "");
+  }
+  refreshCount();
+  syncOrderFromDom();
+
+  // ── Combobox logic ──────────────────────────────────────────────────
+  function initCombobox(combobox) {
+    var trigger     = combobox.querySelector(".combobox-input");
+    var dropdown    = combobox.querySelector(".combobox-dropdown");
+    var search      = combobox.querySelector(".combobox-search");
+    var optionsPane = combobox.querySelector(".combobox-options");
+    var options     = Array.from(optionsPane.querySelectorAll(".combobox-option"));
+
+    // Find hidden input by DOM traversal — never fails even if IDs are wrong
+    function getHidden() {
+      var row = combobox.closest(".formset-row");
+      return row ? row.querySelector('input[type="hidden"][name$="-track"]') : null;
+    }
+
+    function open() {
+      dropdown.classList.add("open");
+      trigger.classList.add("open");
+      trigger.setAttribute("aria-expanded", "true");
+      search.value = "";
+      showAll();
+      setTimeout(function () { search.focus(); }, 0);
+    }
+
+    function close() {
+      dropdown.classList.remove("open");
+      trigger.classList.remove("open");
+      trigger.setAttribute("aria-expanded", "false");
+    }
+
+    function showAll() {
+      optionsPane.querySelectorAll(".combobox-group-label, .combobox-option")
+        .forEach(function (el) { el.style.display = ""; });
+      var empty = optionsPane.querySelector(".combobox-empty");
+      if (empty) empty.remove();
+    }
+
+    function pick(value, label) {
+      var h = getHidden();
+      if (h) h.value = value;
+      if (value) {
+        trigger.textContent = label;
+        trigger.style.color = "";
+      } else {
+        trigger.innerHTML = '<span style="color:var(--muted);font-style:italic;">— Select a track —</span>';
+      }
+      plog("pick", "track_pk=", value, "label=", normDisplayText(label || "").slice(0, 72));
+      close();
+    }
+
+    trigger.addEventListener("click", function () {
+      dropdown.classList.contains("open") ? close() : open();
+    });
+    trigger.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+      if (e.key === "Escape") close();
+    });
+
+    search.addEventListener("input", function () {
+      var q = this.value.trim().toLowerCase();
+      var anyVisible = false;
+      var visibleGroups = {};
+
+      options.forEach(function (opt) {
+        if (!opt.dataset.value) { opt.style.display = ""; return; }
+        var match = !q || opt.dataset.search.includes(q);
+        opt.style.display = match ? "" : "none";
+        if (match) {
+          anyVisible = true;
+          var g = opt.dataset.label ? opt.dataset.label.split(" — ")[0] : "";
+          visibleGroups[g] = true;
+        }
+      });
+
+      optionsPane.querySelectorAll(".combobox-group-label").forEach(function (gl) {
+        gl.style.display = visibleGroups[gl.textContent.trim()] ? "" : "none";
+      });
+
+      var empty = optionsPane.querySelector(".combobox-empty");
+      if (!anyVisible && q) {
+        if (!empty) {
+          empty = document.createElement("div");
+          empty.className = "combobox-empty";
+          empty.textContent = "No tracks match \u201c" + q + "\u201d";
+          optionsPane.appendChild(empty);
+        }
+      } else if (empty) {
+        empty.remove();
+      }
+    });
+
+    options.forEach(function (opt) {
+      opt.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+        pick(opt.dataset.value || "", opt.dataset.label || opt.textContent.trim());
+      });
+    });
+
+    document.addEventListener("click", function (e) {
+      if (!combobox.contains(e.target)) close();
+    });
+
+    // ── Initialize: sync hidden input from displayed text ──────────
+    // Handles both server-rendered existing values and post-validation re-renders
+    var h = getHidden();
+    if (h && !h.value) {
+      // Hidden is empty — try to recover value from displayed track name
+      var displayText = normDisplayText(trigger.textContent);
+      var placeholder = normDisplayText("\u2014 Select a track \u2014");
+      if (displayText && displayText !== placeholder) {
+        var matched = options.find(function (o) {
+          if (!o.dataset.value) return false;
+          var dl = normDisplayText(o.dataset.label || "");
+          return dl === displayText;
+        });
+        if (matched) {
+          h.value = matched.dataset.value;
+          plog("initCombobox: recovered hidden from label", displayText.slice(0, 72), "->", h.value);
+        } else {
+          plog("initCombobox: no option match for display", JSON.stringify(displayText.slice(0, 100)));
+        }
+      }
+    }
+  }
+
+  body.querySelectorAll(".combobox").forEach(initCombobox);
+
+  // ── Add row ────────────────────────────────────────────────────────
+  document.getElementById("add-track").addEventListener("click", function () {
+    var idx  = body.querySelectorAll(".formset-row").length;
+    var html = emptyTmpl.innerHTML.replace(/__prefix__/g, idx);
+    var wrap = document.createElement("div");
+    wrap.innerHTML = html;
+    var row = wrap.querySelector(".formset-row");
+    body.appendChild(row);
+    totalForms.value = idx + 1;
+    bindRemove(row);
+    bindDrag(row);
+    row.querySelectorAll(".combobox").forEach(initCombobox);
+    syncOrderFromDom();
+    refreshCount();
+    row.querySelector(".combobox-input").focus();
+  });
+
+  // ── Remove row ─────────────────────────────────────────────────────
+  function bindRemove(row) {
+    var btn = row.querySelector(".remove-row");
+    if (btn) btn.addEventListener("click", function () {
+      row.remove(); reindex(); syncOrderFromDom(); refreshCount();
+      logFormsetState("remove row (after reindex)");
+    });
+  }
+  body.querySelectorAll(".formset-row").forEach(bindRemove);
+
+  // ── Reindex (suffix-based; avoids corrupting names/ids that mention playlist_tracks-N twice) ──
+  var PT_NAME_RE = /^playlist_tracks-\d+-(.+)$/;
+  var PT_ID_RE = /^id_playlist_tracks-\d+-(.+)$/;
+
+  function assignRowFormsetIndex(row, i) {
+    row.querySelectorAll("input, select").forEach(function (el) {
+      var n = el.getAttribute("name");
+      if (n && PT_NAME_RE.test(n)) {
+        el.setAttribute("name", "playlist_tracks-" + i + "-" + n.match(PT_NAME_RE)[1]);
+      }
+      var idv = el.getAttribute("id");
+      if (idv && PT_ID_RE.test(idv)) {
+        el.setAttribute("id", "id_playlist_tracks-" + i + "-" + idv.match(PT_ID_RE)[1]);
+      }
+    });
+    var hid = row.querySelector('input[type="hidden"][name$="-track"]');
+    row.querySelectorAll(".combobox").forEach(function (cb) {
+      if (hid && hid.id) cb.setAttribute("data-for", hid.id);
+    });
+  }
+
+  function reindex() {
+    body.querySelectorAll(".formset-row").forEach(function (row, i) {
+      assignRowFormsetIndex(row, i);
+    });
+    totalForms.value = body.querySelectorAll(".formset-row").length;
+  }
+
+  // Django uses ORDER (1,2,3,…) to build formset.ordered_forms — must match visual row order.
+  function syncOrderFromDom() {
+    body.querySelectorAll(".formset-row").forEach(function (row, i) {
+      var o = row.querySelector('input[name$="-ORDER"]');
+      if (o) o.value = String(i + 1);
+    });
+  }
+
+  // ── Drag-and-drop ──────────────────────────────────────────────────
+  var dragSrc = null;
+
+  function bindDrag(row) {
+    row.addEventListener("dragstart", function (e) {
+      dragSrc = row;
+      var all = Array.from(body.querySelectorAll(".formset-row"));
+      plog("dragstart: dragged DOM index", all.indexOf(row), "of", all.length);
+      logFormsetState("dragstart (before any move)");
+      setTimeout(function () { row.classList.add("dragging"); }, 0);
+      e.dataTransfer.effectAllowed = "move";
+    });
+    row.addEventListener("dragend", function () {
+      row.classList.remove("dragging");
+      body.querySelectorAll(".formset-row").forEach(function (r) { r.classList.remove("drag-over"); });
+      syncOrderFromDom();
+      logFormsetState("dragend (ORDER synced to DOM; names unchanged until save)");
+    });
+    row.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      if (row !== dragSrc) {
+        body.querySelectorAll(".formset-row").forEach(function (r) { r.classList.remove("drag-over"); });
+        row.classList.add("drag-over");
+      }
+    });
+    row.addEventListener("dragleave", function () { row.classList.remove("drag-over"); });
+    row.addEventListener("drop", function (e) {
+      e.preventDefault();
+      row.classList.remove("drag-over");
+      if (dragSrc && dragSrc !== row) {
+        var all = Array.from(body.querySelectorAll(".formset-row"));
+        plog("drop: moving DOM", all.indexOf(dragSrc), "relative to", all.indexOf(row));
+        all.indexOf(dragSrc) < all.indexOf(row) ? row.after(dragSrc) : row.before(dragSrc);
+        syncOrderFromDom();
+        logFormsetState("drop (ORDER synced)");
+      }
+    });
+  }
+  body.querySelectorAll(".formset-row").forEach(bindDrag);
+
+  // ── Save button loading state + sync hidden inputs ──────────
+  document.querySelector("form").addEventListener("submit", function () {
+    reindex();
+    syncOrderFromDom();
+    logFormsetState("submit (after reindex + ORDER sync, before hidden sync)");
+    // Safety net: for each combobox, sync the hidden track in THIS row only.
+    body.querySelectorAll(".combobox").forEach(function (cb) {
+      var row    = cb.closest(".formset-row");
+      var hidden = row ? row.querySelector('input[type="hidden"][name$="-track"]') : null;
+      if (!hidden) return;
+      var trigger = cb.querySelector(".combobox-input");
+      var text    = normDisplayText(trigger ? trigger.textContent : "");
+      var placeholder = normDisplayText("\u2014 Select a track \u2014");
+      if (!text || text === placeholder) return;
+      var opts = Array.from(cb.querySelectorAll(".combobox-option[data-value]"));
+      var match = opts.find(function (o) {
+        if (!o.dataset.value) return false;
+        var dl = normDisplayText(o.dataset.label || "");
+        return dl === text || o.dataset.value === text;
+      });
+      if (match && match.dataset.value) {
+        if (hidden.value !== match.dataset.value) {
+          plog("submit sync: set", hidden.name, "from", JSON.stringify(hidden.value), "to", match.dataset.value);
+        }
+        hidden.value = match.dataset.value;
+      } else if (!hidden.value) {
+        plog("submit sync: NO MATCH for row", hidden.name, "display=", JSON.stringify(text.slice(0, 100)));
+      }
+    });
+    logFormsetState("submit (after hidden sync)");
+    logPlaylistPostFields("submit");
+
+    var btn     = document.getElementById("save-btn");
+    var label   = document.getElementById("save-label");
+    var spinner = document.getElementById("save-spinner");
+    btn.disabled = true;
+    label.style.display = "none";
+    spinner.style.display = "inline-flex";
+    btn.style.opacity = ".75";
+  });
+}());
+</script>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "grunge/base.html" %}
+
+{% block title %}Tracks — Grunge{% endblock %}
+{% block nav_tracks %}active{% endblock %}
+{% block nav_search_val %}{{ search_q }}{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;gap:1rem;flex-wrap:wrap;">
+  <div>
+    <h1 class="page-title">Tracks</h1>
+    <p class="page-subtitle">
+      {% if search_q %}
+        Results for &ldquo;{{ search_q }}&rdquo;
+        &nbsp;<span style="color:var(--muted2);">&mdash;</span>&nbsp;
+        {{ paginator.count }} match{{ paginator.count|pluralize:"es" }}
+      {% else %}
+        {{ paginator.count }} track{{ paginator.count|pluralize }} in the catalogue
+      {% endif %}
+    </p>
+  </div>
+  <a href="{% url 'playlist-create' %}" class="btn-primary-app">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    New Playlist
+  </a>
+</div>
+
+<!-- Search -->
+<div style="margin-bottom:1.75rem;">
+  <form method="get" style="display:flex;gap:.5rem;max-width:480px;">
+    <div class="search-wrap" style="flex:1;">
+      <span class="search-icon">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input type="search" name="q" value="{{ search_q }}"
+             placeholder="Search by track name, album, or artist…" autocomplete="off">
+    </div>
+    {% if search_q %}<a href="{% url 'track-list' %}" class="btn-secondary-app">Clear</a>{% endif %}
+  </form>
+</div>
+
+{% if tracks %}
+  {# Column headers #}
+  <div style="display:grid;grid-template-columns:2.5rem 1fr 1fr 1fr;gap:1rem;
+              padding:.45rem .75rem;font-size:.68rem;text-transform:uppercase;
+              letter-spacing:.08em;color:var(--muted);border-bottom:1px solid var(--border);
+              margin-bottom:.15rem;">
+    <span style="text-align:right;">#</span>
+    <span>Title</span>
+    <span>Album</span>
+    <span>Artist</span>
+  </div>
+
+  <ul class="track-list">
+    {% for track in tracks %}
+      <li style="display:grid;grid-template-columns:2.5rem 1fr 1fr 1fr;gap:1rem;
+                 align-items:center;padding:.55rem .75rem;border-radius:6px;
+                 transition:background .1s;"
+          onmouseover="this.style.background='var(--surface2)'"
+          onmouseout="this.style.background=''">
+        <span class="track-num">{{ track.number }}</span>
+        <div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;font-size:.875rem;">
+          {{ track.name }}
+        </div>
+        <a href="{% url 'album-detail' track.album.uuid %}"
+           style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+                  font-size:.8rem;color:var(--muted);transition:color .12s;"
+           onmouseover="this.style.color='var(--text)'"
+           onmouseout="this.style.color='var(--muted)'">
+          {{ track.album.name }}
+        </a>
+        <a href="{% url 'artist-detail' track.album.artist.uuid %}"
+           style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+                  font-size:.8rem;color:var(--muted);transition:color .12s;"
+           onmouseover="this.style.color='var(--text)'"
+           onmouseout="this.style.color='var(--muted)'">
+          {{ track.album.artist.name }}
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if is_paginated %}
+    <div class="pagination-wrap">
+      {% if page_obj.has_previous %}
+        <a href="?{% if search_q %}q={{ search_q }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-btn">&laquo; Prev</a>
+      {% else %}
+        <span class="page-btn" disabled>&laquo; Prev</span>
+      {% endif %}
+      <span class="page-btn current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a href="?{% if search_q %}q={{ search_q }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-btn">Next &raquo;</a>
+      {% else %}
+        <span class="page-btn" disabled>Next &raquo;</span>
+      {% endif %}
+    </div>
+  {% endif %}
+
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">&#9835;</div>
+    {% if search_q %}
+      <p class="empty-title">No tracks match &ldquo;{{ search_q }}&rdquo;</p>
+      <p class="empty-body">Try searching by track name, album, or artist.</p>
+      <a href="{% url 'track-list' %}" class="btn-secondary-app">Clear search</a>
+    {% else %}
+      <p class="empty-title">No tracks in the catalogue</p>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Grunge{% endblock %}</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  >
+  <style>
+    /* ── Design tokens ─────────────────────────────── */
+    :root {
+      --bg:        #0d0d0d;
+      --surface:   #181818;
+      --surface2:  #222222;
+      --surface3:  #2a2a2a;
+      --border:    #2e2e2e;
+      --text:      #f0f0f0;
+      --muted:     #888;
+      --muted2:    #555;
+      --accent:    #f5a623;
+      --accent-dk: #c8871c;
+      --accent-lt: rgba(245,166,35,.12);
+      --danger:    #e05252;
+      --success:   #4caf76;
+      --radius:    10px;
+      --nav-h:     58px;
+    }
+
+    /* ── Reset / base ──────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; }
+
+    /* ── Top nav ───────────────────────────────────── */
+    .app-nav {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      height: var(--nav-h);
+      background: rgba(13,13,13,.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .app-nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .app-logo {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      flex-shrink: 0;
+    }
+    .app-logo svg { width: 18px; height: 18px; fill: var(--accent); }
+
+    .app-nav-links {
+      display: flex;
+      align-items: center;
+      gap: .1rem;
+    }
+    .app-nav-links a {
+      color: var(--muted);
+      font-size: .825rem;
+      font-weight: 500;
+      padding: .4rem .75rem;
+      border-radius: 6px;
+      transition: color .15s, background .15s;
+      white-space: nowrap;
+    }
+    .app-nav-links a:hover { color: var(--text); background: var(--surface2); }
+    .app-nav-links a.active { color: var(--text); font-weight: 600; }
+    .app-nav-links .nav-divider {
+      width: 1px; height: 16px;
+      background: var(--border);
+      margin: 0 .35rem;
+    }
+
+    /* global search */
+    .nav-search-wrap {
+      flex: 1;
+      max-width: 320px;
+      margin-left: auto;
+      position: relative;
+    }
+    .nav-search-wrap svg {
+      position: absolute;
+      left: .7rem; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted2);
+      pointer-events: none;
+    }
+    .nav-search-wrap input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text);
+      padding: .38rem .85rem .38rem 2.2rem;
+      font-size: .8rem;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .nav-search-wrap input::placeholder { color: var(--muted2); }
+    .nav-search-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(245,166,35,.1);
+    }
+
+    /* ── Page wrapper ──────────────────────────────── */
+    .app-body {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 5rem;
+    }
+
+    /* ── Alerts / messages ─────────────────────────── */
+    .app-alert {
+      background: rgba(245,166,35,.07);
+      border: 1px solid rgba(245,166,35,.22);
+      color: var(--accent);
+      border-radius: 8px;
+      padding: .65rem 1rem;
+      font-size: .85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .app-alert button {
+      background: none; border: none; cursor: pointer;
+      color: var(--accent); font-size: 1rem; padding: 0 .25rem; opacity: .6;
+    }
+    .app-alert button:hover { opacity: 1; }
+
+    /* ── Typography helpers ────────────────────────── */
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -.5px;
+      margin: 0;
+    }
+    .page-subtitle { color: var(--muted); font-size: .85rem; margin: .3rem 0 0; }
+    .section-label {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: .6rem;
+    }
+
+    /* ── Buttons ───────────────────────────────────── */
+    .btn-primary-app {
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      font-size: .82rem;
+      border: none;
+      border-radius: 6px;
+      padding: .48rem 1.1rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      transition: background .15s, transform .1s;
+      white-space: nowrap;
+      letter-spacing: .01em;
+    }
+    .btn-primary-app:hover { background: var(--accent-dk); color: #000; transform: translateY(-1px); }
+    .btn-primary-app:active { transform: translateY(0); }
+
+    .btn-secondary-app {
+      background: var(--surface2);
+      color: var(--muted);
+      font-weight: 500;
+      font-size: .82rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .48rem 1rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      transition: border-color .15s, color .15s;
+      white-space: nowrap;
+    }
+    .btn-secondary-app:hover { border-color: #555; color: var(--text); }
+
+    .btn-ghost-app {
+      background: transparent;
+      color: var(--muted);
+      font-size: .82rem;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: .48rem .9rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .btn-ghost-app:hover { color: var(--text); background: var(--surface2); border-color: var(--border); }
+
+    .btn-danger-app {
+      background: transparent;
+      color: var(--danger);
+      font-size: .82rem;
+      border: 1px solid rgba(224,82,82,.3);
+      border-radius: 6px;
+      padding: .48rem 1rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      transition: border-color .15s, background .15s;
+    }
+    .btn-danger-app:hover { border-color: var(--danger); background: rgba(224,82,82,.06); color: var(--danger); }
+
+    /* ── Cards (generic) ───────────────────────────── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 1rem;
+    }
+    .catalogue-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+      transition: background .18s, transform .18s;
+      cursor: pointer;
+    }
+    .catalogue-card:hover { background: var(--surface2); transform: translateY(-3px); }
+    .catalogue-card-art {
+      width: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .catalogue-card-art .play-btn {
+      position: absolute;
+      bottom: .75rem; right: .75rem;
+      width: 40px; height: 40px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #000;
+      font-size: .85rem;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .2s, transform .2s;
+      box-shadow: 0 4px 16px rgba(0,0,0,.6);
+      pointer-events: none;
+    }
+    .catalogue-card:hover .play-btn { opacity: 1; transform: translateY(0); }
+    .catalogue-card-body { padding: .75rem .85rem .9rem; }
+    .catalogue-card-name {
+      font-weight: 600;
+      font-size: .875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: .2rem;
+    }
+    .catalogue-card-meta { font-size: .75rem; color: var(--muted); }
+
+    /* hover action buttons on card */
+    .card-actions {
+      position: absolute;
+      top: .55rem; right: .55rem;
+      display: flex; gap: .3rem;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .catalogue-card:hover .card-actions { opacity: 1; }
+    .card-action-btn {
+      width: 28px; height: 28px;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(4px);
+      border-radius: 50%;
+      color: #fff;
+      font-size: .7rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .card-action-btn:hover { background: rgba(0,0,0,.9); color: #fff; }
+    .card-action-btn.danger:hover { background: var(--danger); }
+
+    /* playlist-specific aliases (keep old names working) */
+    .playlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 1.15rem; }
+    .playlist-card { background: var(--surface); border-radius: var(--radius); overflow: hidden; position: relative; transition: background .18s, transform .18s; cursor: pointer; }
+    .playlist-card:hover { background: var(--surface2); transform: translateY(-3px); }
+    .playlist-card-art { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; position: relative; }
+    .playlist-card-art .play-btn { position: absolute; bottom: .75rem; right: .75rem; width: 40px; height: 40px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: .85rem; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; box-shadow: 0 4px 16px rgba(0,0,0,.6); pointer-events: none; }
+    .playlist-card:hover .play-btn { opacity: 1; transform: translateY(0); }
+    .playlist-card-body { padding: .75rem .85rem .9rem; }
+    .playlist-card-name { font-weight: 600; font-size: .875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: .2rem; }
+    .playlist-card-meta { font-size: .75rem; color: var(--muted); }
+    .playlist-card-actions { position: absolute; top: .55rem; right: .55rem; display: flex; gap: .3rem; opacity: 0; transition: opacity .15s; }
+    .playlist-card:hover .playlist-card-actions { opacity: 1; }
+
+    /* ── Track list ────────────────────────────────── */
+    .track-list { list-style: none; padding: 0; margin: 0; }
+    .track-row {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr 1fr auto;
+      align-items: center;
+      gap: 1rem;
+      padding: .55rem .75rem;
+      border-radius: 6px;
+      transition: background .1s;
+      font-size: .875rem;
+    }
+    .track-row:hover { background: var(--surface2); }
+    .track-num { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; font-size: .8rem; }
+    .track-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .track-artist { color: var(--muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .track-album { color: var(--muted); font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Formset (playlist editor) ─────────────────── */
+    .formset-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      /* No overflow:hidden — combobox dropdowns must escape the card */
+    }
+    .formset-header {
+      padding: .65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .formset-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .5rem 1rem;
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+    .formset-row:last-child { border-bottom: none; }
+    .formset-row.dragging { opacity: .25; }
+    .formset-row.drag-over { border-top: 2px solid var(--accent); background: rgba(245,166,35,.04); }
+    .drag-handle { color: var(--muted2); cursor: grab; font-size: 1rem; flex-shrink: 0; transition: color .15s; user-select: none; }
+    .drag-handle:hover { color: var(--muted); }
+    .drag-handle:active { cursor: grabbing; }
+    .formset-footer { padding: .6rem 1rem; border-top: 1px solid var(--border); background: var(--surface); }
+
+    /* ── Form controls ─────────────────────────────── */
+    input[type="text"],
+    input[type="search"],
+    select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: .48rem .75rem;
+      font-size: .875rem;
+      width: 100%;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      -webkit-appearance: none;
+    }
+    input[type="text"]:focus,
+    input[type="search"]:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(245,166,35,.1);
+    }
+    input[type="text"].error,
+    select.error { border-color: var(--danger); }
+    .field-error { color: var(--danger); font-size: .78rem; margin-top: .3rem; }
+
+    /* ── Search bar (page-level) ───────────────────── */
+    .search-wrap { position: relative; }
+    .search-wrap input {
+      padding-left: 2.4rem;
+      border-radius: 8px;
+      height: 38px;
+    }
+    .search-wrap input::placeholder { color: var(--muted2); }
+    .search-icon {
+      position: absolute;
+      left: .7rem; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted2);
+      pointer-events: none;
+      line-height: 1;
+      display: flex;
+    }
+
+    /* ── Breadcrumb ────────────────────────────────── */
+    .breadcrumb {
+      display: flex; align-items: center; gap: .4rem;
+      font-size: .8rem; color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+    .breadcrumb a { color: var(--muted); }
+    .breadcrumb a:hover { color: var(--text); }
+    .breadcrumb-sep { color: var(--muted2); }
+
+    /* ── Empty state ───────────────────────────────── */
+    .empty-state { text-align: center; padding: 5rem 2rem; }
+    .empty-icon { font-size: 2.5rem; opacity: .2; margin-bottom: 1rem; }
+    .empty-title { font-size: 1.1rem; font-weight: 600; margin-bottom: .35rem; }
+    .empty-body { color: var(--muted); font-size: .875rem; margin-bottom: 1.5rem; }
+
+    /* ── Tag / badge ───────────────────────────────── */
+    .badge-app {
+      display: inline-flex; align-items: center;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: .2rem .65rem;
+      font-size: .72rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* ── Table (generic) ───────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      font-size: .68rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      padding: .5rem .75rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-weight: 500;
+    }
+    .data-table td {
+      padding: .6rem .75rem;
+      border-bottom: 1px solid rgba(46,46,46,.5);
+      font-size: .875rem;
+      vertical-align: middle;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tbody tr { transition: background .1s; }
+    .data-table tbody tr:hover { background: var(--surface2); }
+
+    /* ── Pagination ────────────────────────────────── */
+    .pagination-wrap {
+      display: flex; justify-content: center; align-items: center;
+      gap: .4rem; margin-top: 2.5rem;
+    }
+    .page-btn {
+      min-width: 34px; height: 34px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: .8rem;
+      transition: color .15s, border-color .15s;
+      padding: 0 .65rem;
+    }
+    .page-btn:hover { color: var(--text); border-color: #555; }
+    .page-btn.current { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .page-btn[disabled] { opacity: .35; pointer-events: none; }
+
+    /* ── Toast notifications ───────────────────────── */
+    #toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 9000;
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+      pointer-events: none;
+    }
+    .toast {
+      pointer-events: all;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      font-size: .85rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+      min-width: 260px;
+      max-width: 360px;
+      animation: toast-in .2s ease;
+    }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error   { border-left: 3px solid var(--danger);  }
+    .toast.info    { border-left: 3px solid var(--accent);  }
+    .toast-icon { font-size: 1rem; flex-shrink: 0; }
+    .toast-msg  { flex: 1; }
+    .toast-close {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: .9rem; padding: 0 .1rem;
+      flex-shrink: 0; opacity: .6;
+    }
+    .toast-close:hover { opacity: 1; }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .toast.toast-out {
+      animation: toast-out .2s ease forwards;
+    }
+    @keyframes toast-out {
+      to { opacity: 0; transform: translateY(8px); }
+    }
+
+    /* ── Footer ────────────────────────────────────── */
+    .app-footer {
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+      font-size: .72rem;
+      color: var(--muted2);
+    }
+    .app-footer a { color: var(--muted2); }
+    .app-footer a:hover { color: var(--muted); }
+    .app-footer .footer-sep { width: 1px; height: 12px; background: var(--border); }
+  </style>
+</head>
+<body>
+
+  <!-- ── Navigation ──────────────────────────────────────────── -->
+  <nav class="app-nav">
+    <div class="app-nav-inner">
+      <a class="app-logo" href="{% url 'artist-list' %}">
+        <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+        grunge
+      </a>
+
+      <div class="app-nav-links">
+        <a href="{% url 'artist-list' %}" class="{% block nav_artists %}{% endblock %}">Artists</a>
+        <a href="{% url 'track-list' %}"  class="{% block nav_tracks %}{% endblock %}">Tracks</a>
+        <div class="nav-divider"></div>
+        <a href="{% url 'playlist-list' %}" class="{% block nav_playlists %}{% endblock %}">Playlists</a>
+      </div>
+
+      <!-- Global search -->
+      <form class="nav-search-wrap" method="get" action="{% url 'track-list' %}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="search" name="q" value="{% block nav_search_val %}{% endblock %}"
+               placeholder="Search artists, albums, tracks…" autocomplete="off">
+      </form>
+    </div>
+  </nav>
+
+  <!-- ── Main content ────────────────────────────────────────── -->
+  <main class="app-body">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── Toast container ──────────────────────────────────────── -->
+  <div id="toast-container"></div>
+  {% if messages %}
+  <script>
+    (function () {
+      var data = [
+        {% for message in messages %}
+        { text: '{{ message.message|escapejs }}', level: '{{ message.tags|default:"info" }}' }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ];
+      document.addEventListener("DOMContentLoaded", function () {
+        data.forEach(function (m) { showToast(m.text, m.level); });
+      });
+    }());
+  </script>
+  {% endif %}
+
+  <!-- ── Developer footer ─────────────────────────────────────── -->
+  <footer>
+    <div class="app-footer">
+      <span>Grunge Rock Catalogue</span>
+      <div class="footer-sep"></div>
+      <a href="/admin/">Admin</a>
+      <a href="/api/v1/">REST API</a>
+    </div>
+  </footer>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"
+  ></script>
+  <script>
+  function showToast(text, level) {
+    var icons = { success: "✓", error: "✕", warning: "!", info: "♪" };
+    var container = document.getElementById("toast-container");
+    var t = document.createElement("div");
+    t.className = "toast " + (level || "info");
+    t.innerHTML =
+      '<span class="toast-icon">' + (icons[level] || "♪") + "</span>" +
+      '<span class="toast-msg">' + text + "</span>" +
+      '<button class="toast-close" onclick="dismissToast(this.parentElement)">&times;</button>';
+    container.appendChild(t);
+    setTimeout(function () { dismissToast(t); }, 4000);
+  }
+  function dismissToast(t) {
+    if (!t || !t.parentElement) return;
+    t.classList.add("toast-out");
+    setTimeout(function () { if (t.parentElement) t.parentElement.removeChild(t); }, 200);
+  }
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

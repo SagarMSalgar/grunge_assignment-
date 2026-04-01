@@ -1,0 +1,79 @@
+{% extends "grunge/base.html" %}
+
+{% block title %}{{ album.name }} — {{ album.artist.name }} — Grunge{% endblock %}
+{% block nav_artists %}active{% endblock %}
+
+{% block content %}
+
+<div class="breadcrumb">
+  <a href="{% url 'artist-list' %}">Artists</a>
+  <span class="breadcrumb-sep">/</span>
+  <a href="{% url 'artist-detail' album.artist.uuid %}">{{ album.artist.name }}</a>
+  <span class="breadcrumb-sep">/</span>
+  <span style="color:var(--text);">{{ album.name }}</span>
+</div>
+
+{# ── Album hero ─────────────────────────────────────────────────────────── #}
+<div style="display:flex;gap:2rem;align-items:flex-end;margin-bottom:2.5rem;flex-wrap:wrap;">
+  <div style="
+    width:200px;height:200px;flex-shrink:0;border-radius:12px;
+    background:linear-gradient(145deg,
+      hsl({{ album.year }}0,26%,30%),
+      hsl({{ album.name|length }}5,16%,11%));
+    display:flex;align-items:center;justify-content:center;
+    font-size:4rem;box-shadow:0 16px 48px rgba(0,0,0,.65);">
+    &#127925;
+  </div>
+  <div style="flex:1;min-width:0;padding-bottom:.25rem;">
+    <p style="font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 .3rem;">Album</p>
+    <h1 style="font-size:2.4rem;font-weight:900;letter-spacing:-1px;line-height:1.05;margin:0 0 .5rem;word-break:break-word;">
+      {{ album.name }}
+    </h1>
+    <p style="color:var(--muted);font-size:.875rem;margin:0 0 1.25rem;">
+      <a href="{% url 'artist-detail' album.artist.uuid %}"
+         style="color:var(--text);font-weight:600;"
+         onmouseover="this.style.color='var(--accent)'"
+         onmouseout="this.style.color='var(--text)'"
+       >{{ album.artist.name }}</a>
+      &nbsp;&middot;&nbsp;{{ album.year }}
+      &nbsp;&middot;&nbsp;{{ album.tracks.all|length }} track{{ album.tracks.all|length|pluralize }}
+    </p>
+    <a href="{% url 'playlist-create' %}" class="btn-primary-app">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New playlist
+    </a>
+  </div>
+</div>
+
+{# ── Track listing ──────────────────────────────────────────────────────── #}
+{% with tracks=album.tracks.all %}
+{% if tracks %}
+  {# Header row #}
+  <div class="track-row" style="color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);border-radius:0;padding-bottom:.5rem;margin-bottom:.15rem;">
+    <span style="text-align:right;">#</span>
+    <span>Title</span>
+    <span class="d-none d-md-block"></span>
+    <span></span>
+  </div>
+  <ul class="track-list">
+    {% for track in tracks %}
+      <li class="track-row">
+        <span class="track-num">{{ track.number }}</span>
+        <div style="min-width:0;">
+          <div class="track-name">{{ track.name }}</div>
+          <div class="track-artist" style="font-size:.75rem;">{{ album.artist.name }}</div>
+        </div>
+        <span class="d-none d-md-block"></span>
+        <span></span>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty-state" style="padding:3rem 0;">
+    <div class="empty-icon">&#9835;</div>
+    <p class="empty-title">No tracks on this album</p>
+  </div>
+{% endif %}
+{% endwith %}
+
+{% endblock %}

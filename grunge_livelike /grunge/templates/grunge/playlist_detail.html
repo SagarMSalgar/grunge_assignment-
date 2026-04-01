@@ -1,0 +1,85 @@
+{% extends "grunge/base.html" %}
+
+{% block title %}{{ playlist.name }} — Grunge{% endblock %}
+{% block nav_playlists %}active{% endblock %}
+
+{% block content %}
+
+<div class="breadcrumb">
+  <a href="{% url 'playlist-list' %}">Playlists</a>
+  <span class="breadcrumb-sep">/</span>
+  <span style="color:var(--text);">{{ playlist.name }}</span>
+</div>
+
+{# ── Hero ──────────────────────────────────────────────────────────── #}
+<div style="display:flex;gap:2rem;align-items:flex-end;margin-bottom:2.5rem;flex-wrap:wrap;">
+  <div style="
+    width:200px;height:200px;flex-shrink:0;
+    background:linear-gradient(145deg,
+      hsl({{ playlist.name|length }}0,30%,28%),
+      hsl({{ playlist.name|length }}5,18%,12%));
+    border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:4rem;
+    box-shadow:0 16px 48px rgba(0,0,0,.6);">
+    &#9835;
+  </div>
+  <div style="flex:1;min-width:0;">
+    <p style="font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 .4rem;">
+      Playlist
+    </p>
+    <h1 style="font-size:2.8rem;font-weight:900;letter-spacing:-1px;line-height:1;margin:0 0 .75rem;word-break:break-word;">
+      {{ playlist.name }}
+    </h1>
+    {% with count=playlist.playlist_tracks.all|length %}
+      <p style="color:var(--muted);font-size:.875rem;margin:0 0 1.5rem;">
+        {{ count }} track{{ count|pluralize }}
+      </p>
+    {% endwith %}
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+      <a href="{% url 'playlist-update' playlist.uuid %}" class="btn-primary-app">
+        Edit playlist
+      </a>
+      <a href="{% url 'playlist-delete' playlist.uuid %}" class="btn-secondary-app">
+        Delete
+      </a>
+    </div>
+  </div>
+</div>
+
+{# ── Track table ───────────────────────────────────────────────────── #}
+{% with tracks=playlist.playlist_tracks.all %}
+  {% if tracks %}
+    {# Column header row #}
+    <div class="track-row" style="color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);border-radius:0;padding-bottom:.5rem;margin-bottom:.25rem;">
+      <span style="text-align:right;">#</span>
+      <span>Title</span>
+      <span>Album</span>
+      <span></span>
+    </div>
+
+    <ul class="track-list">
+      {% for pt in tracks %}
+        <li class="track-row">
+          <span class="track-num">{{ pt.position }}</span>
+          <div style="min-width:0;">
+            <div class="track-name">{{ pt.track.name }}</div>
+            <div class="track-artist">{{ pt.track.album.artist.name }}</div>
+          </div>
+          <div class="track-album d-none d-md-block">{{ pt.track.album.name }}</div>
+          <span></span>
+        </li>
+      {% endfor %}
+    </ul>
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">&#127925;</div>
+      <p class="empty-title">No tracks yet</p>
+      <p class="empty-body">Add tracks to start building this playlist.</p>
+      <a href="{% url 'playlist-update' playlist.uuid %}" class="btn-primary-app">Add tracks</a>
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% endblock %}
